@@ -28,16 +28,17 @@ var (
 func BlockingJobs(version string) (jobs []*Job) {
 	// For the sake of simplicity, let's use an hard-coded list
 	for _, j := range blockingJobs {
-		jobs = append(jobs, NewJob(fmt.Sprintf(j, version)))
+		jobs = append(jobs, NewJob(fmt.Sprintf(j, version), version))
 	}
 	return
 }
 
 // NewJob creates a new job instance
-func NewJob(name string) *Job {
+func NewJob(name, version string) *Job {
 	return &Job{
 		name:     name,
 		safeName: name[strings.Index(name, "e2e"):],
+		version:  version,
 		builds:   []*Build{},
 		history: JobHistory{
 			Data: make(map[string]TestHistory),
@@ -64,11 +65,20 @@ type JobHistory struct {
 type Job struct {
 	name     string
 	safeName string
+	version  string
 	builds   []*Build
 	history  JobHistory
 }
 
-func (j *Job) fetchAllBuildIds() (buildIds []string, err error) {
+func (j *Job) Name() string {
+	return j.name
+}
+
+func (j *Job) SafeName() string {
+	return j.safeName
+}
+
+func (j *Job) FetchAllBuildIds() (buildIds []string, err error) {
 	buildsUrl := fmt.Sprintf("%s/%s/", baseArtifactsUrl, j.name)
 	s := NewHtmlScraper(buildsUrl, `.*/(\d+)/`)
 	buildIds, err = s.Get()
@@ -90,14 +100,16 @@ func (j *Job) GetBuildsSince(from string) error {
 		return err
 	}
 
-	buildIds, err := j.fetchAllBuildIds()
+	buildIds, err := j.FetchAllBuildIds()
 	if err != nil {
 		return err
 	}
 
 	for _, id := range buildIds {
 		b := NewBuild(id, j)
-		if b.HasTests() != nil {
+		b.LoadCurrentStatus()
+
+		if !b.IsFinished() {
 			continue
 		}
 

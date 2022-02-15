@@ -41,6 +41,21 @@ func main() {
 					return commands.NewCheckCommand(c.String("versions"), c.String("since")).Run()
 				},
 			},
+			{
+				Name:    "metal-wall",
+				Aliases: []string{"mw"},
+				Usage:   "Starts a local web server to monitor all the metal jobs",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:    "port",
+						Aliases: []string{"p"},
+						Value:   "8081",
+					},
+				},
+				Action: func(c *cli.Context) error {
+					return commands.NewMetalWallCommand(c.String("port")).Run()
+				},
+			},
 		},
 	}
 

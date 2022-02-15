@@ -8,6 +8,10 @@ import (
 	"time"
 )
 
+type Started struct {
+	Timestamp int64 `json:"timestamp"`
+}
+
 type Finished struct {
 	Timestamp int64  `json:"timestamp"`
 	Passed    bool   `json:"passed"`
@@ -20,28 +24,58 @@ type Build struct {
 	job *Job
 	// The unique build id
 	id string
+	// The starting info of the build
+	started Started
 	// The end status of the build
-	finished Finished
-	// A link to the build artifacts
+	finished *Finished
+	// A link to the build
+	buildUrl string
+	// A link to the build steps artifacts
 	artifactsUrl string
+}
+
+func (b *Build) Id() string {
+	return b.id
+}
+
+func (b *Build) IsFinished() bool {
+	return b.finished != nil
+}
+
+func (b *Build) Passed() bool {
+	return b.finished.Passed
+}
+
+func (b *Build) Url() string {
+	return b.buildUrl
 }
 
 func (b *Build) Finished() time.Time {
 	return time.Unix(b.finished.Timestamp, 0)
 }
 
-func (b *Build) HasTests() error {
-	url := fmt.Sprintf("%s/baremetalds-e2e-test/finished.json", b.artifactsUrl)
-	body, err := FetchRemoteFile(url)
+func (b *Build) LoadCurrentStatus() error {
+
+	started, err := FetchRemoteFile(fmt.Sprintf("%s/started.json", b.buildUrl))
+	if err != nil {
+		return err
+	}
+	err = json.Unmarshal(started, &b.started)
 	if err != nil {
 		return err
 	}
 
-	err = json.Unmarshal(body, &b.finished)
+	finished, err := FetchRemoteFile(fmt.Sprintf("%s/finished.json", b.buildUrl))
 	if err != nil {
 		return err
 	}
 
+	var f Finished
+	err = json.Unmarshal(finished, &f)
+	// If the build is still pending, the finished.json file is not published
+	if err == nil {
+		b.finished = &f
+	}
 	return nil
 }
 
@@ -88,6 +122,7 @@ func NewBuild(id string, job *Job) *Build {
 	return &Build{
 		id:           id,
 		job:          job,
+		buildUrl:     fmt.Sprintf("%s/%s/%s", baseArtifactsUrl, job.name, id),
 		artifactsUrl: fmt.Sprintf("%s/%s/%s/artifacts/%s", baseArtifactsUrl, job.name, id, job.safeName),
 	}
 }
