@@ -5,6 +5,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/openshift-metal3/dev-scripts/metal-releases/pkg/jobs"
 )
@@ -12,7 +13,8 @@ import (
 type MetalWallCommand struct {
 	port string
 
-	Builds map[string][]BuildInfo
+	Builds      map[string][]BuildInfo
+	LastUpdated time.Time
 }
 
 type BuildInfo struct {
@@ -134,6 +136,8 @@ func (mw *MetalWallCommand) fetchInitialData() error {
 		}
 		mw.Builds[v] = builds
 	}
+
+	mw.LastUpdated = time.Now()
 
 	return nil
 }
