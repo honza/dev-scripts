@@ -1,0 +1,7 @@
+{
+  "name": "metal-support",
+  "version": "0.1.0",
+  "dependencies": {
+    "tailwindcss": "^3.0.23"
+  }
+}
