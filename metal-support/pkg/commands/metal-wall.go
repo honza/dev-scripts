@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/openshift-metal3/dev-scripts/metal-releases/pkg/jobs"
@@ -21,6 +22,8 @@ type MetalWallCommand struct {
 	builds      map[string]*jobs.Build // build id -> build
 	BuildsInfo  map[string][]BuildInfo // version -> info
 	LastUpdated time.Time
+
+	mu sync.Mutex
 }
 
 type BuildInfo struct {
@@ -44,7 +47,7 @@ type JSONResponse struct {
 }
 
 func NewMetalWallCommand(port string) Command {
-	return MetalWallCommand{
+	return &MetalWallCommand{
 		port:       port,
 		versions:   []string{"4.11", "4.10", "4.9", "4.8"},
 		builds:     make(map[string]*jobs.Build),
@@ -52,7 +55,11 @@ func NewMetalWallCommand(port string) Command {
 	}
 }
 
-func (mw MetalWallCommand) AsJSON() JSONResponse {
+func (mw *MetalWallCommand) AsJSON() JSONResponse {
+
+	defer mw.mu.Unlock()
+	mw.mu.Lock()
+
 	versions := []Version{}
 	for version, builds := range mw.BuildsInfo {
 		versions = append(versions, Version{Name: version, Builds: builds})
@@ -60,13 +67,13 @@ func (mw MetalWallCommand) AsJSON() JSONResponse {
 	return JSONResponse{Versions: versions, LastUpdated: mw.LastUpdated}
 }
 
-func (mw MetalWallCommand) Run() error {
+func (mw *MetalWallCommand) Run() error {
 
-	log.Println("Fetching current status...")
+	log.Println("Warming up, it could take a while...")
 	mw.fetchInitialData()
+	mw.setupBackgroundUpdate()
 
 	log.Println("Launching metal wall server at port", mw.port)
-
 	var reactFS = http.FS(reactFiles)
 	fs := rootPath(http.FileServer(reactFS))
 	http.Handle("/", fs)
@@ -80,6 +87,16 @@ func (mw MetalWallCommand) Run() error {
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%s", mw.port), nil))
 
 	return nil
+}
+
+func (mw *MetalWallCommand) setupBackgroundUpdate() {
+	ticker := time.NewTicker(30 * time.Second)
+	go func() {
+		for {
+			<-ticker.C
+			mw.refreshData()
+		}
+	}()
 }
 
 func rootPath(h http.Handler) http.Handler {
@@ -99,6 +116,9 @@ func rootPath(h http.Handler) http.Handler {
 
 func (mw *MetalWallCommand) refreshData() {
 
+	defer mw.mu.Unlock()
+	mw.mu.Lock()
+
 	start := time.Now()
 
 	defer func() {
@@ -109,11 +129,6 @@ func (mw *MetalWallCommand) refreshData() {
 	for v, infos := range mw.BuildsInfo {
 		for i, info := range infos {
 			b := mw.builds[info.BuildId]
-
-			if b == nil {
-				log.Printf("[WARN] info.BuildId %s (%s) is nil! \n", info.JobName, info.BuildId)
-				continue
-			}
 
 			latest, err := b.Job().GetLatestBuild()
 			if err != nil {

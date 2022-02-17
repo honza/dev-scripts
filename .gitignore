@@ -18,3 +18,6 @@ pull_secret.json
 metal-support/.vscode/launch.json
 metal-support/pkg/commands/build
 node_modules
+metal-support/metal-support
+metal-support/package-lock.json
+
