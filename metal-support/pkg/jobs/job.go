@@ -39,6 +39,7 @@ func NewJob(name, version string) *Job {
 		name:     name,
 		safeName: name[strings.Index(name, "e2e"):],
 		version:  version,
+		url:      fmt.Sprintf("%s/%s/", baseArtifactsUrl, name),
 		builds:   []*Build{},
 		history: JobHistory{
 			Data: make(map[string]TestHistory),
@@ -66,6 +67,7 @@ type Job struct {
 	name     string
 	safeName string
 	version  string
+	url      string
 	builds   []*Build
 	history  JobHistory
 }
@@ -79,8 +81,7 @@ func (j *Job) SafeName() string {
 }
 
 func (j *Job) FetchAllBuildIds() (buildIds []string, err error) {
-	buildsUrl := fmt.Sprintf("%s/%s/", baseArtifactsUrl, j.name)
-	s := NewHtmlScraper(buildsUrl, `.*/(\d+)/`)
+	s := NewHtmlScraper(j.url, `.*/(\d+)/`)
 	buildIds, err = s.Get()
 	if err != nil {
 		return nil, err
@@ -90,6 +91,15 @@ func (j *Job) FetchAllBuildIds() (buildIds []string, err error) {
 		return buildIds[i] > buildIds[j]
 	})
 	return buildIds, nil
+}
+
+func (j *Job) GetLatestBuild() (*Build, error) {
+	latest, err := FetchRemoteFile(fmt.Sprintf("%s/latest-build.txt", j.url))
+	if err != nil {
+		return nil, err
+	}
+
+	return NewBuild(string(latest), j), nil
 }
 
 func (j *Job) GetBuildsSince(from string) error {

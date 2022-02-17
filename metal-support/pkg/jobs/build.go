@@ -54,6 +54,10 @@ func (b *Build) Finished() time.Time {
 	return time.Unix(b.finished.Timestamp, 0)
 }
 
+func (b *Build) Job() *Job {
+	return b.job
+}
+
 func (b *Build) LoadCurrentStatus() error {
 
 	started, err := FetchRemoteFile(fmt.Sprintf("%s/started.json", b.buildUrl))

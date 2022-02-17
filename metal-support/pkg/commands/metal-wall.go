@@ -5,29 +5,34 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/openshift-metal3/dev-scripts/metal-releases/pkg/jobs"
 )
 
 type MetalWallCommand struct {
-	port string
-
-	Builds map[string][]BuildInfo
+	port       string
+	versions   []string
+	builds     map[string]*jobs.Build // build id -> build
+	BuildsInfo map[string][]BuildInfo // version -> info
 }
 
 type BuildInfo struct {
-	Version    string
-	JobName    string
-	BuildId    string
-	IsBlocking bool
-	Passed     bool
-	Url        string
+	Version            string
+	JobName            string
+	BuildId            string
+	IsBlocking         bool
+	Passed             bool
+	NewBuildInProgress bool
+	Url                string
 }
 
 func NewMetalWallCommand(port string) Command {
 	return MetalWallCommand{
-		port:   port,
-		Builds: make(map[string][]BuildInfo),
+		port:       port,
+		versions:   []string{"4.11", "4.10", "4.9", "4.8"},
+		builds:     make(map[string]*jobs.Build),
+		BuildsInfo: make(map[string][]BuildInfo),
 	}
 }
 
@@ -57,7 +62,7 @@ func (mw *MetalWallCommand) template() string {
 	</head>
 	<body>
 	  <h2>Metal Wall</h2>
-	  {{range $version, $builds := .Builds}}
+	  {{range $version, $builds := .BuildsInfo}}
 	    <div style="padding: 10px; border: 1px solid black;"> 
 			<b>{{$version}}</b>
 			{{range $builds}}
@@ -67,6 +72,7 @@ func (mw *MetalWallCommand) template() string {
 				<div style="background-color: #fcc ; padding: 10px; border: 1px solid red;"> 
 				{{if .IsBlocking}}<b>&#9888;</b>{{end}}
 				{{end}}
+				{{if .NewBuildInProgress}}<b>*</b>{{end}}
 				{{.JobName}} (<a href="{{.Url}}">{{.BuildId}}</a>)
 				</div>
 			{{end}}
@@ -95,17 +101,67 @@ func (mw *MetalWallCommand) renderPage(w http.ResponseWriter, r *http.Request) {
 }
 
 func (mw *MetalWallCommand) MetalWallHandler(w http.ResponseWriter, r *http.Request) {
-	//blocking, _ := mw.refreshData()
+	mw.refreshData()
 	mw.renderPage(w, r)
+}
+
+func (mw *MetalWallCommand) refreshData() {
+
+	start := time.Now()
+
+	defer func() {
+		end := time.Now()
+		log.Printf("Refresh data completed in %0.2f seconds\n", end.Sub(start).Seconds())
+	}()
+
+	for v, infos := range mw.BuildsInfo {
+		for i, info := range infos {
+			b := mw.builds[info.BuildId]
+
+			if b == nil {
+				log.Printf("[WARN] info.BuildId %s (%s) is nil! \n", info.JobName, info.BuildId)
+				continue
+			}
+
+			latest, err := b.Job().GetLatestBuild()
+			if err != nil {
+				log.Printf("Unable to get latest build for %s (%s). Error: %s\n", info.JobName, info.BuildId, err)
+				continue
+			}
+			// Check if there's a new build for the job
+			if b.Id() != latest.Id() {
+				err = latest.LoadCurrentStatus()
+				if err != nil {
+					log.Printf("Unable to get latest build info for %s (%s). Error: %s\n", info.JobName, info.BuildId, err)
+					continue
+				}
+
+				// Update view
+				if !latest.IsFinished() {
+					log.Printf("Found new build for job %s (%s) in progress\n", b.Job().Name(), latest.Id())
+					info.NewBuildInProgress = true
+				} else {
+					log.Printf("Found new completed build for job %s (%s) ", b.Job().Name(), latest.Id())
+					// Update builds map
+					delete(mw.builds, info.BuildId)
+					mw.builds[latest.Id()] = latest
+
+					info.NewBuildInProgress = false
+					info.BuildId = latest.Id()
+					info.Passed = latest.Passed()
+					info.Url = latest.Url()
+				}
+				mw.BuildsInfo[v][i] = info
+			}
+		}
+	}
 }
 
 // Gets the current latest completed build
 func (mw *MetalWallCommand) fetchInitialData() error {
 
-	versions := []string{"4.10", "4.11"}
-
-	for _, v := range versions {
-		var builds []BuildInfo
+	for _, v := range mw.versions {
+		var infos []BuildInfo
 		for _, j := range jobs.BlockingJobs(v) {
 
 			buildIds, err := j.FetchAllBuildIds()
@@ -121,7 +177,9 @@ func (mw *MetalWallCommand) fetchInitialData() error {
 					continue
 				}
 
-				builds = append(builds, BuildInfo{
+				mw.builds[b.Id()] = b
+
+				infos = append(infos, BuildInfo{
 					Version:    v,
 					JobName:    j.SafeName(),
 					BuildId:    b.Id(),
@@ -132,7 +190,7 @@ func (mw *MetalWallCommand) fetchInitialData() error {
 				break
 			}
 		}
-		mw.Builds[v] = builds
+		mw.BuildsInfo[v] = infos
 	}
 
 	return nil
