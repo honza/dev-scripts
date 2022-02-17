@@ -1,4 +1,5 @@
 import React, { Component } from "react";
+import { FaSpinner } from "react-icons/fa";
 
 let buildResultClassNames = (build) =>
   build.passed
@@ -21,7 +22,8 @@ class Version extends Component {
                 build
               )}`}
             >
-              <a href={build.url} target="_blank">
+              <a href={build.url} target="_blank" rel="noreferrer">
+                {build.in_progress ? <FaSpinner className="inline mr-2" /> : []}
                 {build.job_name}
               </a>
             </div>

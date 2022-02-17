@@ -34,6 +34,7 @@ type BuildInfo struct {
 	Passed             bool   `json:"passed"`
 	NewBuildInProgress bool   `json:"new_build_in_progress"`
 	Url                string `json:"url"`
+	InProgress         bool   `json:"in_progress"`
 }
 
 type Version struct {
