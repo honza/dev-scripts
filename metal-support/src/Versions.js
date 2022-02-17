@@ -6,7 +6,7 @@ class Versions extends Component {
     return this.props.loaded ? (
       <div className="flex flex-row items-stretch gap-4 w-full p-3">
         {this.props.versions.map((version) => (
-          <Version version={version} />
+          <Version key={version.name} version={version} />
         ))}
       </div>
     ) : (
