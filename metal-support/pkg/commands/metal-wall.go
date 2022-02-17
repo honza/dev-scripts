@@ -32,11 +32,11 @@ type BuildInfo struct {
 	Version            string `json:"version"`
 	JobName            string `json:"job_name"`
 	BuildId            string `json:"build_id"`
-	IsBlocking         bool   `json:"is_blocking"`
 	Passed             bool   `json:"passed"`
 	NewBuildInProgress bool   `json:"new_build_in_progress"`
 	Url                string `json:"url"`
 	InProgress         bool   `json:"in_progress"`
+	Type               string `json:"type"`
 }
 
 type Version struct {
@@ -52,7 +52,7 @@ type JSONResponse struct {
 func NewMetalWallCommand(port string) Command {
 	return &MetalWallCommand{
 		port:       port,
-		versions:   []string{"4.11", "4.10", "4.9", "4.8"},
+		versions:   []string{"4.11", "4.10", "4.9", "4.8", "4.7"},
 		builds:     make(map[string]*jobs.Build),
 		BuildsInfo: make(map[string][]BuildInfo),
 	}
@@ -173,17 +173,18 @@ func (mw *MetalWallCommand) refreshData() {
 	mw.LastUpdated = time.Now().UTC()
 }
 
-// Gets the current latest completed build
-func (mw *MetalWallCommand) fetchInitialData() error {
+func (mw *MetalWallCommand) fetchJobs(getJobs func(version string) (jobs []*jobs.Job), jobType string) error {
 
 	for _, v := range mw.versions {
 		var infos []BuildInfo
-		for _, j := range jobs.BlockingJobs(v) {
+		for _, j := range getJobs(v) {
 
 			buildIds, err := j.FetchAllBuildIds()
 			if err != nil {
 				return err
 			}
+
+			log.Printf("[%s] Jobs found: %d\n", j.Name(), len(buildIds))
 
 			for _, id := range buildIds {
 				b := jobs.NewBuild(id, j)
@@ -196,17 +197,31 @@ func (mw *MetalWallCommand) fetchInitialData() error {
 				mw.builds[b.Id()] = b
 
 				infos = append(infos, BuildInfo{
-					Version:    v,
-					JobName:    j.SafeName(),
-					BuildId:    b.Id(),
-					Url:        b.Url(),
-					Passed:     b.Passed(),
-					IsBlocking: true,
+					Version: v,
+					JobName: j.SafeName(),
+					BuildId: b.Id(),
+					Url:     b.Url(),
+					Passed:  b.Passed(),
+					Type:    jobType,
 				})
 				break
 			}
 		}
 		mw.BuildsInfo[v] = infos
+	}
+
+	return nil
+}
+
+// Gets the current latest completed build
+func (mw *MetalWallCommand) fetchInitialData() error {
+
+	if err := mw.fetchJobs(jobs.BlockingJobs, "blocking"); err != nil {
+		return err
+	}
+
+	if err := mw.fetchJobs(jobs.InformingJobs, "informing"); err != nil {
+		return err
 	}
 
 	mw.LastUpdated = time.Now().UTC()

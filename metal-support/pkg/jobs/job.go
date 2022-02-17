@@ -22,12 +22,31 @@ var (
 		"periodic-ci-openshift-release-master-nightly-%s-e2e-metal-ipi-ovn-ipv6",
 		"periodic-ci-openshift-release-master-nightly-%s-e2e-metal-ipi-serial-ipv4",
 	}
+	informingJobs []string = []string{
+		"periodic-ci-openshift-release-master-nightly-%s-e2e-metal-ipi-virtualmedia",
+		"periodic-ci-openshift-release-master-nightly-%s-e2e-metal-ipi-compact",
+		"periodic-ci-openshift-release-master-nightly-%s-e2e-metal-ipi-ovn-dualstack",
+		"periodic-ci-openshift-release-master-nightly-%s-e2e-metal-ipi-serial-ipv6",
+		"periodic-ci-openshift-release-master-nightly-%s-e2e-metal-ipi-serial-virtualmedia",
+		"periodic-ci-openshift-release-master-nightly-%s-e2e-metal-ipi-serial-compact",
+		"periodic-ci-openshift-release-master-nightly-%s-e2e-metal-ipi-serial-ovn-dualstack",
+	}
 )
 
 // BlockingJobs returns a list of blocking jobs for the specified version
 func BlockingJobs(version string) (jobs []*Job) {
 	// For the sake of simplicity, let's use an hard-coded list
-	for _, j := range blockingJobs {
+	return makeJobs(version, blockingJobs)
+}
+
+// InformingJobs returns a list of informing jobs for the specified version (upgrades excluded)
+func InformingJobs(version string) (jobs []*Job) {
+	// For the sake of simplicity, let's use an hard-coded list
+	return makeJobs(version, informingJobs)
+}
+
+func makeJobs(version string, jobsTemplate []string) (jobs []*Job) {
+	for _, j := range jobsTemplate {
 		jobs = append(jobs, NewJob(fmt.Sprintf(j, version), version))
 	}
 	return
