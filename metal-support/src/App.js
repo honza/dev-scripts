@@ -1,4 +1,5 @@
 import React, { Component } from "react";
+import { GiGuitar, GiBearFace } from "react-icons/gi";
 import axios from "axios";
 
 import Versions from "./Versions";
@@ -56,7 +57,11 @@ export default class App extends Component {
       <div className="bg-slate-100 font-mono">
         <div className="bg-white mb-1 h-10 grid grid-cols-2 place-content-between h-12">
           <div className="">
-            <h1 className="text-lg p-3">Metal Wall</h1>
+            <h1 className="text-lg p-3">
+              <GiBearFace className="inline" />
+              <GiGuitar className="inline mr-3" />
+              Metal Wall
+            </h1>
           </div>
           {this.state.updating ? <Loader /> : []}
         </div>
