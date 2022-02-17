@@ -1,16 +1,19 @@
 package commands
 
 import (
+	"embed"
 	"encoding/json"
 	"fmt"
-	"html/template"
-	"io/ioutil"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/openshift-metal3/dev-scripts/metal-releases/pkg/jobs"
 )
+
+//go:embed build/*
+var reactFiles embed.FS
 
 type MetalWallCommand struct {
 	port        string
@@ -63,7 +66,11 @@ func (mw MetalWallCommand) Run() error {
 	mw.fetchInitialData()
 
 	log.Println("Launching metal wall server at port", mw.port)
-	http.HandleFunc("/", mw.MetalWallHandler)
+
+	var reactFS = http.FS(reactFiles)
+	fs := rootPath(http.FileServer(reactFS))
+	http.Handle("/", fs)
+
 	http.HandleFunc("/data.json", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -75,28 +82,19 @@ func (mw MetalWallCommand) Run() error {
 	return nil
 }
 
-func (mw *MetalWallCommand) template() string {
-
-	contents, err := ioutil.ReadFile("../templates/index.html")
-	if err != nil {
-		log.Fatal(err)
-	}
-	return string(contents)
-}
-
-func (mw *MetalWallCommand) renderPage(w http.ResponseWriter, r *http.Request) {
-	t := template.New("metal wall template")
-	t, err := t.Parse(mw.template())
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	t.Execute(w, mw)
-}
-
-func (mw *MetalWallCommand) MetalWallHandler(w http.ResponseWriter, r *http.Request) {
-	mw.refreshData()
-	mw.renderPage(w, r)
+func rootPath(h http.Handler) http.Handler {
+	staticDir := "build"
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/" {
+			r.URL.Path = fmt.Sprintf("/%s/", staticDir)
+		} else {
+			b := strings.Split(r.URL.Path, "/")[0]
+			if b != staticDir {
+				r.URL.Path = fmt.Sprintf("/%s%s", staticDir, r.URL.Path)
+			}
+		}
+		h.ServeHTTP(w, r)
+	})
 }
 
 func (mw *MetalWallCommand) refreshData() {

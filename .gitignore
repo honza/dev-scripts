@@ -16,4 +16,5 @@ assets/templates/99_worker-chronyd-redhat.yaml
 
 pull_secret.json
 metal-support/.vscode/launch.json
+metal-support/pkg/commands/build
 node_modules
