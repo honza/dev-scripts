@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"io/ioutil"
@@ -12,20 +13,31 @@ import (
 )
 
 type MetalWallCommand struct {
-	port       string
-	versions   []string
-	builds     map[string]*jobs.Build // build id -> build
-	BuildsInfo map[string][]BuildInfo // version -> info
+	port        string
+	versions    []string
+	builds      map[string]*jobs.Build // build id -> build
+	BuildsInfo  map[string][]BuildInfo // version -> info
+	LastUpdated time.Time
 }
 
 type BuildInfo struct {
-	Version            string
-	JobName            string
-	BuildId            string
-	IsBlocking         bool
-	Passed             bool
-	NewBuildInProgress bool
-	Url                string
+	Version            string `json:"version"`
+	JobName            string `json:"job_name"`
+	BuildId            string `json:"build_id"`
+	IsBlocking         bool   `json:"is_blocking"`
+	Passed             bool   `json:"passed"`
+	NewBuildInProgress bool   `json:"new_build_in_progress"`
+	Url                string `json:"url"`
+}
+
+type Version struct {
+	Name   string      `json:"name"`
+	Builds []BuildInfo `json:"builds"`
+}
+
+type JSONResponse struct {
+	Versions    []Version `json:"versions"`
+	LastUpdated time.Time `json:"last_updated"`
 }
 
 func NewMetalWallCommand(port string) Command {
@@ -37,6 +49,14 @@ func NewMetalWallCommand(port string) Command {
 	}
 }
 
+func (mw MetalWallCommand) AsJSON() JSONResponse {
+	versions := []Version{}
+	for version, builds := range mw.BuildsInfo {
+		versions = append(versions, Version{Name: version, Builds: builds})
+	}
+	return JSONResponse{Versions: versions, LastUpdated: mw.LastUpdated}
+}
+
 func (mw MetalWallCommand) Run() error {
 
 	log.Println("Fetching current status...")
@@ -44,8 +64,11 @@ func (mw MetalWallCommand) Run() error {
 
 	log.Println("Launching metal wall server at port", mw.port)
 	http.HandleFunc("/", mw.MetalWallHandler)
-	http.HandleFunc("/style.css", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, "css/style.min.css")
+	http.HandleFunc("/data.json", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(mw.AsJSON())
 	})
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%s", mw.port), nil))
 
@@ -126,6 +149,7 @@ func (mw *MetalWallCommand) refreshData() {
 			}
 		}
 	}
+	mw.LastUpdated = time.Now().UTC()
 }
 
 // Gets the current latest completed build
@@ -163,6 +187,8 @@ func (mw *MetalWallCommand) fetchInitialData() error {
 		}
 		mw.BuildsInfo[v] = infos
 	}
+
+	mw.LastUpdated = time.Now().UTC()
 
 	return nil
 }
