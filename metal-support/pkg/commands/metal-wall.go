@@ -53,22 +53,16 @@ func (mw MetalWallCommand) Run() error {
 }
 
 func (mw *MetalWallCommand) template() string {
-	contents, err := ioutil.ReadFile("templates/index.html")
+
+	contents, err := ioutil.ReadFile("../templates/index.html")
 	if err != nil {
 		log.Fatal(err)
 	}
 	return string(contents)
 }
 
-func (mw *MetalWallCommand) BuildId(args ...interface{}) string {
-	return "fixed"
-}
-
 func (mw *MetalWallCommand) renderPage(w http.ResponseWriter, r *http.Request) {
 	t := template.New("metal wall template")
-	t.Funcs(template.FuncMap{
-		"buildId": mw.BuildId,
-	})
 	t, err := t.Parse(mw.template())
 	if err != nil {
 		log.Fatal(err)
