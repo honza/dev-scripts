@@ -11,6 +11,13 @@ export default class App extends Component {
   };
 
   componentDidMount() {
+    this.fetchData();
+    this.timer = setInterval(() => this.fetchData(), 60 * 1000);
+  }
+
+  fetchData() {
+    this.setState({ loaded: false });
+
     axios.get(`/data.json`).then((res) => {
       const versions = res.data.versions;
       const lastUpdated = res.data.last_updated;
