@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"sort"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/hashicorp/go-version"
 	"github.com/openshift-metal3/dev-scripts/metal-releases/pkg/jobs"
 )
 
@@ -64,6 +66,11 @@ func (mw *MetalWallCommand) AsJSON() JSONResponse {
 	for version, builds := range mw.BuildsInfo {
 		versions = append(versions, Version{Name: version, Builds: builds})
 	}
+	sort.SliceStable(versions, func(i, j int) bool {
+		v1, _ := version.NewVersion(versions[i].Name)
+		v2, _ := version.NewVersion(versions[j].Name)
+		return v1.GreaterThan(v2)
+	})
 	return JSONResponse{Versions: versions, LastUpdated: mw.LastUpdated}
 }
 
