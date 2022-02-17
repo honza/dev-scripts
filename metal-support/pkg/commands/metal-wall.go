@@ -3,6 +3,7 @@ package commands
 import (
 	"fmt"
 	"html/template"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"time"
@@ -43,44 +44,20 @@ func (mw MetalWallCommand) Run() error {
 
 	log.Println("Launching metal wall server at port", mw.port)
 	http.HandleFunc("/", mw.MetalWallHandler)
+	http.HandleFunc("/style.css", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "css/style.min.css")
+	})
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%s", mw.port), nil))
 
 	return nil
 }
 
 func (mw *MetalWallCommand) template() string {
-	return `
-<html>
-	<head>
-	  <title>Metal Wall2</title>
-	  <script>
-	  function autoRefresh() {
-		  window.location = window.location.href;
-	  }
-	  setInterval('autoRefresh()', 30000);
-  </script>
-	</head>
-	<body>
-	  <h2>Metal Wall</h2>
-	  {{range $version, $builds := .BuildsInfo}}
-	    <div style="padding: 10px; border: 1px solid black;"> 
-			<b>{{$version}}</b>
-			{{range $builds}}
-				{{if .Passed }}
-				<div style="background-color: #cfc ; padding: 10px; border: 1px solid green;"> 
-				{{else}}
-				<div style="background-color: #fcc ; padding: 10px; border: 1px solid red;"> 
-				{{if .IsBlocking}}<b>&#9888;</b>{{end}}
-				{{end}}
-				{{if .NewBuildInProgress}}<b>*</b>{{end}}
-				{{.JobName}} (<a href="{{.Url}}">{{.BuildId}}</a>)
-				</div>
-			{{end}}
-		</div>
-	  {{end}}
-	</body>
-  </html>
-`
+	contents, err := ioutil.ReadFile("templates/index.html")
+	if err != nil {
+		log.Fatal(err)
+	}
+	return string(contents)
 }
 
 func (mw *MetalWallCommand) BuildId(args ...interface{}) string {
