@@ -3,11 +3,37 @@ import axios from "axios";
 
 import Versions from "./Versions";
 
+class Loader extends Component {
+  render() {
+    return (
+      <div className="inline-flex items-center place-self-end text-slate-600">
+        <svg className="animate-spin h-5 w-5 mr-3" viewBox="0 0 24 24">
+          <circle
+            className="opacity-25"
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            stroke-width="4"
+          ></circle>
+          <path
+            className="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+          ></path>
+        </svg>
+        <h1 className="text-lg p-3 text-slate-400">Loading...</h1>
+      </div>
+    );
+  }
+}
+
 export default class App extends Component {
   state = {
     versions: [],
     loaded: false,
     lastUpdated: null,
+    updating: false,
   };
 
   componentDidMount() {
@@ -16,20 +42,23 @@ export default class App extends Component {
   }
 
   fetchData() {
-    this.setState({ loaded: false });
+    this.setState({ updating: true });
 
     axios.get(`/data.json`).then((res) => {
       const versions = res.data.versions;
       const lastUpdated = res.data.last_updated;
-      this.setState({ versions, lastUpdated, loaded: true });
+      this.setState({ versions, lastUpdated, loaded: true, updating: false });
     });
   }
 
   render() {
     return (
       <div className="bg-slate-100 font-mono">
-        <div className="bg-white mb-1 h-10">
-          <h1 className="text-lg p-3">Metal Wall</h1>
+        <div className="bg-white mb-1 h-10 grid grid-cols-2 place-content-between h-12">
+          <div className="">
+            <h1 className="text-lg p-3">Metal Wall</h1>
+          </div>
+          {this.state.updating ? <Loader /> : []}
         </div>
 
         <Versions loaded={this.state.loaded} versions={this.state.versions} />
