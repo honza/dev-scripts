@@ -1,5 +1,10 @@
 import React, { Component } from "react";
 
+let buildResultClassNames = (build) =>
+  build.passed
+    ? `bg-green-400 hover:bg-green-300 border-green-600`
+    : `bg-red-300 hover:bg-red-300 border-red-600`;
+
 class Version extends Component {
   render() {
     let version = this.props.version;
@@ -10,17 +15,17 @@ class Version extends Component {
         </h1>
 
         <div className="text-sm grid grid-cols-2 gap-2">
-          {version.builds.map((build) =>
-            build.passed ? (
-              <div className="p-1 px-3 border-2 rounded-lg bg-green-400 hover:bg-green-300 border-green-600">
+          {version.builds.map((build) => (
+            <div
+              className={`p-1 px-3 border-2 rounded-lg ${buildResultClassNames(
+                build
+              )}`}
+            >
+              <a href={build.url} target="_blank">
                 {build.job_name}
-              </div>
-            ) : (
-              <div className="p-1 px-3 border-2 rounded-lg bg-red-400 hover:bg-red-300 border-red-600">
-                {build.job_name}
-              </div>
-            )
-          )}
+              </a>
+            </div>
+          ))}
         </div>
       </div>
     );
