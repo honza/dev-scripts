@@ -1,35 +1,25 @@
 import React, { Component } from "react";
 import { FaSpinner } from "react-icons/fa";
 
-let buildResultClassNames = (build) =>
-  build.passed
-    ? `bg-green-400 hover:bg-green-300 border-green-600`
-    : `bg-red-300 hover:bg-red-300 border-red-600`;
+import Builds from "./Builds";
 
 class Version extends Component {
   render() {
     let version = this.props.version;
+    let informing = version.builds.filter(
+      (build) => build.type === "informing"
+    );
+    let blocking = version.builds.filter((build) => build.type === "blocking");
+    let upgrade = version.builds.filter((build) => build.type === "upgrade");
     return (
       <div className="p-8 bg-white rounded-lg shadow-lg font-mono">
-        <h1 className="text-center font-bold text-4xl text-slate-600 mb-10">
+        <h1 className="text-center font-bold text-4xl text-slate-600 mb-5">
           {version.name}
         </h1>
 
-        <div className="text-sm grid grid-cols-2 gap-2">
-          {version.builds.map((build) => (
-            <div
-              key={build.build_id}
-              className={`p-1 px-3 border-2 rounded-lg ${buildResultClassNames(
-                build
-              )}`}
-            >
-              <a href={build.url} target="_blank" rel="noreferrer">
-                {build.in_progress ? <FaSpinner className="inline mr-2" /> : []}
-                {build.job_name}
-              </a>
-            </div>
-          ))}
-        </div>
+        <Builds type="Blocking" builds={blocking} />
+        <Builds type="Informing" builds={informing} />
+        <Builds type="Upgrade" builds={upgrade} />
       </div>
     );
   }
