@@ -7,7 +7,7 @@ import TimeAgo from "react-timeago";
 let buildResultClassNames = (build) =>
   build.passed
     ? `bg-green-400 hover:bg-green-300 border-green-600`
-    : `bg-red-300 hover:bg-red-300 border-red-600`;
+    : `bg-red-400 hover:bg-red-300 border-red-600`;
 
 const Build = ({ build }) => {
   const ref = useRef();
