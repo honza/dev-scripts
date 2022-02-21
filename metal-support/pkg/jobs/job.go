@@ -1,11 +1,14 @@
 package jobs
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/hashicorp/go-version"
 )
 
 const (
@@ -16,6 +19,7 @@ const (
 	maxBuilds = 20
 )
 
+// For the sake of simplicity, let's use hard-coded lists
 var (
 	blockingJobs []string = []string{
 		"periodic-ci-openshift-release-master-nightly-%s-e2e-metal-ipi",
@@ -31,25 +35,63 @@ var (
 		"periodic-ci-openshift-release-master-nightly-%s-e2e-metal-ipi-serial-compact",
 		"periodic-ci-openshift-release-master-nightly-%s-e2e-metal-ipi-serial-ovn-dualstack",
 	}
+	upgradeJobs []string = []string{
+		"periodic-ci-openshift-release-master-nightly-%s-e2e-metal-ipi-upgrade",
+		"periodic-ci-openshift-release-master-nightly-%s-e2e-metal-ipi-upgrade-ovn-ipv6",
+		"periodic-ci-openshift-release-master-nightly-%s-upgrade-from-stable-%s-e2e-metal-ipi-upgrade",
+		"periodic-ci-openshift-release-master-nightly-%s-upgrade-from-stable-%s-e2e-metal-ipi-upgrade-ovn-ipv6",
+	}
+	upgradeStableJobs []string = []string{
+		"periodic-ci-openshift-release-master-nightly-%s-upgrade-from-stable-%s-e2e-metal-ipi-upgrade",
+		"periodic-ci-openshift-release-master-nightly-%s-upgrade-from-stable-%s-e2e-metal-ipi-upgrade-ovn-ipv6",
+	}
 )
 
 // BlockingJobs returns a list of blocking jobs for the specified version
-func BlockingJobs(version string) (jobs []*Job) {
-	// For the sake of simplicity, let's use an hard-coded list
+func BlockingJobs(version string) ([]*Job, error) {
 	return makeJobs(version, blockingJobs)
 }
 
 // InformingJobs returns a list of informing jobs for the specified version (upgrades excluded)
-func InformingJobs(version string) (jobs []*Job) {
-	// For the sake of simplicity, let's use an hard-coded list
+func InformingJobs(version string) ([]*Job, error) {
 	return makeJobs(version, informingJobs)
 }
 
-func makeJobs(version string, jobsTemplate []string) (jobs []*Job) {
+// UpgradeJobs returns a list of composed by upgrade and stable upgrade jobs for the specified version
+func UpgradeJobs(v string) ([]*Job, error) {
+	jobs, err := makeJobs(v, upgradeJobs)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get previous minor version
+	currV, err := version.NewVersion(v)
+	if err != nil {
+		return nil, err
+	}
+
+	prevMajor := currV.Segments()[0]
+	prevMinor := currV.Segments()[1] - 1
+	if prevMinor < 0 {
+		return nil, errors.New("major version switch not supported")
+	}
+
+	prevV, err := version.NewVersion(fmt.Sprintf("%d.%d", prevMajor, prevMinor))
+	if err != nil {
+		return nil, err
+	}
+	for _, j := range upgradeStableJobs {
+		jobs = append(jobs, NewJob(fmt.Sprintf(j, v, prevV), v))
+	}
+
+	return jobs, nil
+}
+
+func makeJobs(version string, jobsTemplate []string) (jobs []*Job, err error) {
 	for _, j := range jobsTemplate {
 		jobs = append(jobs, NewJob(fmt.Sprintf(j, version), version))
 	}
-	return
+	return jobs, nil
 }
 
 // NewJob creates a new job instance

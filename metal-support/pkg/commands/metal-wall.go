@@ -173,11 +173,17 @@ func (mw *MetalWallCommand) refreshData() {
 	mw.LastUpdated = time.Now().UTC()
 }
 
-func (mw *MetalWallCommand) fetchJobs(getJobs func(version string) (jobs []*jobs.Job), jobType string) error {
+func (mw *MetalWallCommand) fetchJobs(getJobs func(version string) ([]*jobs.Job, error), jobType string) error {
 
 	for _, v := range mw.versions {
 		var infos []BuildInfo
-		for _, j := range getJobs(v) {
+
+		allJobs, err := getJobs(v)
+		if err != nil {
+			return err
+		}
+
+		for _, j := range allJobs {
 
 			buildIds, err := j.FetchAllBuildIds()
 			if err != nil {
@@ -216,12 +222,16 @@ func (mw *MetalWallCommand) fetchJobs(getJobs func(version string) (jobs []*jobs
 // Gets the current latest completed build
 func (mw *MetalWallCommand) fetchInitialData() error {
 
-	if err := mw.fetchJobs(jobs.BlockingJobs, "blocking"); err != nil {
-		return err
+	allJobs := map[string]func(version string) (jobs []*jobs.Job, err error){
+		"blocking":  jobs.BlockingJobs,
+		"informing": jobs.InformingJobs,
+		"upgrade":   jobs.UpgradeJobs,
 	}
 
-	if err := mw.fetchJobs(jobs.InformingJobs, "informing"); err != nil {
-		return err
+	for jobType, getter := range allJobs {
+		if err := mw.fetchJobs(getter, jobType); err != nil {
+			return err
+		}
 	}
 
 	mw.LastUpdated = time.Now().UTC()

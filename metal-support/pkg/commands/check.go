@@ -32,7 +32,12 @@ func (c CheckCommand) Run() error {
 	}()
 
 	for _, v := range c.versions {
-		for _, j := range jobs.BlockingJobs(v) {
+		blockingJobs, err := jobs.BlockingJobs(v)
+		if err != nil {
+			return err
+		}
+
+		for _, j := range blockingJobs {
 			err := j.GetBuildsSince(c.since)
 			if err != nil {
 				return err
