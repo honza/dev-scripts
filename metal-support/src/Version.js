@@ -1,5 +1,4 @@
 import React, { Component } from "react";
-import { FaSpinner } from "react-icons/fa";
 
 import Builds from "./Builds";
 
