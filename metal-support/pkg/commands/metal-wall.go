@@ -213,7 +213,7 @@ func (mw *MetalWallCommand) fetchJobs(getJobs func(version string) ([]*jobs.Job,
 				break
 			}
 		}
-		mw.BuildsInfo[v] = infos
+		mw.BuildsInfo[v] = append(mw.BuildsInfo[v], infos...)
 	}
 
 	return nil
