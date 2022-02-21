@@ -1,11 +1,16 @@
 package commands
 
 import (
+	"bytes"
 	"embed"
+	"encoding/gob"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
@@ -17,10 +22,12 @@ import (
 
 //go:embed build/*
 var reactFiles embed.FS
+var cacheFilename = ".metal-wall-cache"
 
 type MetalWallCommand struct {
 	port        string
 	versions    []string
+	useCache    bool
 	builds      map[string]*jobs.Build // build id -> build
 	BuildsInfo  map[string][]BuildInfo // version -> info
 	LastUpdated time.Time
@@ -50,10 +57,12 @@ type JSONResponse struct {
 	LastUpdated time.Time `json:"last_updated"`
 }
 
-func NewMetalWallCommand(port string, versions string) Command {
+func NewMetalWallCommand(port string, versions string, useCache bool) Command {
 	return &MetalWallCommand{
-		port:       port,
-		versions:   strings.Split(versions, ","),
+		port:     port,
+		versions: strings.Split(versions, ","),
+		useCache: useCache,
+
 		builds:     make(map[string]*jobs.Build),
 		BuildsInfo: make(map[string][]BuildInfo),
 	}
@@ -76,10 +85,20 @@ func (mw *MetalWallCommand) AsJSON() JSONResponse {
 	return JSONResponse{Versions: versions, LastUpdated: mw.LastUpdated}
 }
 
-func (mw *MetalWallCommand) Run() error {
+func (mw *MetalWallCommand) Run() (err error) {
 
-	log.Println("Warming up, it could take a while...")
-	mw.fetchInitialData()
+	var cacheFound bool
+	if mw.useCache {
+		cacheFound, err = mw.deserialize()
+		if err != nil {
+			return err
+		}
+	}
+
+	if !cacheFound {
+		log.Println("Warming up, it could take a while...")
+		mw.fetchInitialData()
+	}
 	mw.setupBackgroundUpdate()
 
 	log.Println("Launching metal wall server at port", mw.port)
@@ -240,6 +259,80 @@ func (mw *MetalWallCommand) fetchInitialData() error {
 	}
 
 	mw.LastUpdated = time.Now().UTC()
+	if err := mw.serialize(); err != nil {
+		return err
+	}
 
 	return nil
+}
+
+func (mw *MetalWallCommand) GobEncode() ([]byte, error) {
+	buf := new(bytes.Buffer)
+	encoder := gob.NewEncoder(buf)
+	err := encoder.Encode(mw.builds)
+	if err != nil {
+		return nil, err
+	}
+	err = encoder.Encode(mw.BuildsInfo)
+	if err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+func (mw *MetalWallCommand) GobDecode(buf []byte) error {
+	decoder := gob.NewDecoder(bytes.NewBuffer(buf))
+	err := decoder.Decode(&mw.builds)
+	if err != nil {
+		return err
+	}
+	err = decoder.Decode(&mw.BuildsInfo)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (mw *MetalWallCommand) serialize() error {
+	buffer := new(bytes.Buffer)
+	err := gob.NewEncoder(buffer).Encode(mw)
+	if err != nil {
+		return err
+	}
+	workingDir, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+	f, err := os.Create(filepath.Join(workingDir, cacheFilename))
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	_, err = f.Write(buffer.Bytes())
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (mw *MetalWallCommand) deserialize() (bool, error) {
+
+	if _, err := os.Stat(cacheFilename); errors.Is(err, os.ErrNotExist) {
+		return false, nil
+	}
+
+	log.Println("Cache file found, loading data")
+
+	buffer, err := os.ReadFile(cacheFilename)
+	if err != nil {
+		return false, err
+	}
+
+	d := gob.NewDecoder(bytes.NewBuffer(buffer))
+	err = d.Decode(mw)
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
 }

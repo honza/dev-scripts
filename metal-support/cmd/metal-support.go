@@ -57,9 +57,15 @@ func main() {
 						Value:   "4.11,4.10,4.9,4.8,4.7",
 						Usage:   "OpenShift release versions to be analized (comma separated)",
 					},
+					&cli.BoolFlag{
+						Name:    "cache",
+						Aliases: []string{"c"},
+						Value:   true,
+						Usage:   "Use cached data to speed up the bootstrap",
+					},
 				},
 				Action: func(c *cli.Context) error {
-					return commands.NewMetalWallCommand(c.String("port"), c.String("versions")).Run()
+					return commands.NewMetalWallCommand(c.String("port"), c.String("versions"), c.Bool("cache")).Run()
 				},
 			},
 		},

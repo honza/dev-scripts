@@ -1,6 +1,8 @@
 package jobs
 
 import (
+	"bytes"
+	"encoding/gob"
 	"errors"
 	"fmt"
 	"log"
@@ -159,6 +161,73 @@ type Job struct {
 	url         string
 	builds      []*Build
 	history     JobHistory
+}
+
+func (j *Job) GobEncode() ([]byte, error) {
+	buf := new(bytes.Buffer)
+	encoder := gob.NewEncoder(buf)
+	err := encoder.Encode(j.name)
+	if err != nil {
+		return nil, err
+	}
+	err = encoder.Encode(j.safeName)
+	if err != nil {
+		return nil, err
+	}
+	err = encoder.Encode(j.displayName)
+	if err != nil {
+		return nil, err
+	}
+	err = encoder.Encode(j.version)
+	if err != nil {
+		return nil, err
+	}
+	err = encoder.Encode(j.url)
+	if err != nil {
+		return nil, err
+	}
+	// err = encoder.Encode(j.builds)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// err = encoder.Encode(j.history)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	return buf.Bytes(), nil
+}
+
+func (j *Job) GobDecode(buf []byte) error {
+	decoder := gob.NewDecoder(bytes.NewBuffer(buf))
+	err := decoder.Decode(&j.name)
+	if err != nil {
+		return err
+	}
+	err = decoder.Decode(&j.safeName)
+	if err != nil {
+		return err
+	}
+	err = decoder.Decode(&j.displayName)
+	if err != nil {
+		return err
+	}
+	err = decoder.Decode(&j.version)
+	if err != nil {
+		return err
+	}
+	err = decoder.Decode(&j.url)
+	if err != nil {
+		return err
+	}
+	// err = decoder.Decode(&j.builds)
+	// if err != nil {
+	// 	return err
+	// }
+	// err = decoder.Decode(&j.history)
+	// if err != nil {
+	// 	return err
+	// }
+	return nil
 }
 
 func (j *Job) Name() string {

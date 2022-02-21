@@ -1,6 +1,8 @@
 package jobs
 
 import (
+	"bytes"
+	"encoding/gob"
 	"encoding/json"
 	"encoding/xml"
 	"errors"
@@ -120,6 +122,74 @@ func (b *Build) getTestResultsFilename(url string) (string, error) {
 	}
 
 	return res[0], nil
+}
+
+func (b *Build) GobEncode() ([]byte, error) {
+	buf := new(bytes.Buffer)
+	encoder := gob.NewEncoder(buf)
+	err := encoder.Encode(b.artifactsUrl)
+	if err != nil {
+		return nil, err
+	}
+	err = encoder.Encode(b.buildUrl)
+	if err != nil {
+		return nil, err
+	}
+	err = encoder.Encode(b.finished)
+	if err != nil {
+		return nil, err
+	}
+	err = encoder.Encode(b.id)
+	if err != nil {
+		return nil, err
+	}
+	err = encoder.Encode(b.job)
+	if err != nil {
+		return nil, err
+	}
+	err = encoder.Encode(b.started)
+	if err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+func (b *Build) GobDecode(buf []byte) error {
+	decoder := gob.NewDecoder(bytes.NewBuffer(buf))
+
+	err := decoder.Decode(&b.artifactsUrl)
+	if err != nil {
+		return err
+	}
+	err = decoder.Decode(&b.buildUrl)
+	if err != nil {
+		return err
+	}
+
+	var finished Finished
+	err = decoder.Decode(&finished)
+	if err != nil {
+		return err
+	}
+	b.finished = &finished
+
+	err = decoder.Decode(&b.id)
+	if err != nil {
+		return err
+	}
+
+	var job Job
+	err = decoder.Decode(&job)
+	if err != nil {
+		return err
+	}
+	b.job = &job
+
+	err = decoder.Decode(&b.started)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func NewBuild(id string, job *Job) *Build {
