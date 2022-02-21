@@ -37,6 +37,7 @@ type BuildInfo struct {
 	Url                string `json:"url"`
 	InProgress         bool   `json:"in_progress"`
 	Type               string `json:"type"`
+	Finished           string `json:"finished"`
 }
 
 type Version struct {
@@ -165,6 +166,7 @@ func (mw *MetalWallCommand) refreshData() {
 					info.BuildId = latest.Id()
 					info.Passed = latest.Passed()
 					info.Url = latest.Url()
+					info.Finished = latest.Finished().String()
 				}
 				mw.BuildsInfo[v][i] = info
 			}
@@ -203,12 +205,13 @@ func (mw *MetalWallCommand) fetchJobs(getJobs func(version string) ([]*jobs.Job,
 				log.Printf("    %-110s%s\n", j.Name(), b.Id())
 
 				infos = append(infos, BuildInfo{
-					Version: v,
-					JobName: j.DisplayName(),
-					BuildId: b.Id(),
-					Url:     b.Url(),
-					Passed:  b.Passed(),
-					Type:    jobType,
+					Version:  v,
+					JobName:  j.DisplayName(),
+					BuildId:  b.Id(),
+					Url:      b.Url(),
+					Passed:   b.Passed(),
+					Type:     jobType,
+					Finished: b.Finished().String(),
 				})
 				break
 			}

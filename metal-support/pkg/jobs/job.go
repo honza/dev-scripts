@@ -93,17 +93,27 @@ func makeJobs(version string, jobsTemplate []string) (jobs []*Job, err error) {
 	return jobs, nil
 }
 
-// NewJob creates a new job instance
-func NewJob(name, version string) *Job {
+func getDisplayName(name string) string {
+	prefix := "e2e-metal-ipi-"
+	displayName := name[strings.Index(name, prefix)+len(prefix):]
+	displayName = strings.ReplaceAll(displayName, "-", " ")
 
-	safeName := name[strings.Index(name, "e2e"):]
+	if displayName == "" {
+		displayName = "ipv4"
+	}
 
-	displayName := safeName
 	re := regexp.MustCompile(`.*upgrade-from-stable-(\d+.\d+)-e2e-metal-ipi`)
 	if matches := re.FindStringSubmatch(name); matches != nil {
 		displayName = fmt.Sprintf("%s (from %s)", displayName, matches[1])
 	}
+	return displayName
+}
 
+// NewJob creates a new job instance
+func NewJob(name, version string) *Job {
+
+	safeName := name[strings.Index(name, "e2e"):]
+	displayName := getDisplayName(safeName)
 	url := fmt.Sprintf("%s/%s/", baseArtifactsUrl, name)
 
 	return &Job{
