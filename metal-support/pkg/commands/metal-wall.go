@@ -49,10 +49,10 @@ type JSONResponse struct {
 	LastUpdated time.Time `json:"last_updated"`
 }
 
-func NewMetalWallCommand(port string) Command {
+func NewMetalWallCommand(port string, versions string) Command {
 	return &MetalWallCommand{
 		port:       port,
-		versions:   []string{"4.11", "4.10", "4.9", "4.8", "4.7"},
+		versions:   strings.Split(versions, ","),
 		builds:     make(map[string]*jobs.Build),
 		BuildsInfo: make(map[string][]BuildInfo),
 	}
@@ -183,14 +183,13 @@ func (mw *MetalWallCommand) fetchJobs(getJobs func(version string) ([]*jobs.Job,
 			return err
 		}
 
+		log.Printf("  [%s]\n", v)
 		for _, j := range allJobs {
 
 			buildIds, err := j.FetchAllBuildIds()
 			if err != nil {
 				return err
 			}
-
-			log.Printf("[%s] Jobs found: %d\n", j.Name(), len(buildIds))
 
 			for _, id := range buildIds {
 				b := jobs.NewBuild(id, j)
@@ -201,10 +200,11 @@ func (mw *MetalWallCommand) fetchJobs(getJobs func(version string) ([]*jobs.Job,
 				}
 
 				mw.builds[b.Id()] = b
+				log.Printf("    %-110s%s\n", j.Name(), b.Id())
 
 				infos = append(infos, BuildInfo{
 					Version: v,
-					JobName: j.SafeName(),
+					JobName: j.DisplayName(),
 					BuildId: b.Id(),
 					Url:     b.Url(),
 					Passed:  b.Passed(),
@@ -229,6 +229,8 @@ func (mw *MetalWallCommand) fetchInitialData() error {
 	}
 
 	for jobType, getter := range allJobs {
+		log.Println()
+		log.Printf("[%s]\n", jobType)
 		if err := mw.fetchJobs(getter, jobType); err != nil {
 			return err
 		}

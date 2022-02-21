@@ -51,9 +51,15 @@ func main() {
 						Aliases: []string{"p"},
 						Value:   "8081",
 					},
+					&cli.StringFlag{
+						Name:    "versions",
+						Aliases: []string{"v"},
+						Value:   "4.11,4.10,4.9,4.8,4.7",
+						Usage:   "OpenShift release versions to be analized (comma separated)",
+					},
 				},
 				Action: func(c *cli.Context) error {
-					return commands.NewMetalWallCommand(c.String("port")).Run()
+					return commands.NewMetalWallCommand(c.String("port"), c.String("versions")).Run()
 				},
 			},
 		},

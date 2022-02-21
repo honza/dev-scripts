@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -38,8 +39,6 @@ var (
 	upgradeJobs []string = []string{
 		"periodic-ci-openshift-release-master-nightly-%s-e2e-metal-ipi-upgrade",
 		"periodic-ci-openshift-release-master-nightly-%s-e2e-metal-ipi-upgrade-ovn-ipv6",
-		"periodic-ci-openshift-release-master-nightly-%s-upgrade-from-stable-%s-e2e-metal-ipi-upgrade",
-		"periodic-ci-openshift-release-master-nightly-%s-upgrade-from-stable-%s-e2e-metal-ipi-upgrade-ovn-ipv6",
 	}
 	upgradeStableJobs []string = []string{
 		"periodic-ci-openshift-release-master-nightly-%s-upgrade-from-stable-%s-e2e-metal-ipi-upgrade",
@@ -81,7 +80,7 @@ func UpgradeJobs(v string) ([]*Job, error) {
 		return nil, err
 	}
 	for _, j := range upgradeStableJobs {
-		jobs = append(jobs, NewJob(fmt.Sprintf(j, v, prevV), v))
+		jobs = append(jobs, NewJob(fmt.Sprintf(j, v, prevV.Original()), v))
 	}
 
 	return jobs, nil
@@ -96,12 +95,24 @@ func makeJobs(version string, jobsTemplate []string) (jobs []*Job, err error) {
 
 // NewJob creates a new job instance
 func NewJob(name, version string) *Job {
+
+	safeName := name[strings.Index(name, "e2e"):]
+
+	displayName := safeName
+	re := regexp.MustCompile(`.*upgrade-from-stable-(\d+.\d+)-e2e-metal-ipi`)
+	if matches := re.FindStringSubmatch(name); matches != nil {
+		displayName = fmt.Sprintf("%s (from %s)", displayName, matches[1])
+	}
+
+	url := fmt.Sprintf("%s/%s/", baseArtifactsUrl, name)
+
 	return &Job{
-		name:     name,
-		safeName: name[strings.Index(name, "e2e"):],
-		version:  version,
-		url:      fmt.Sprintf("%s/%s/", baseArtifactsUrl, name),
-		builds:   []*Build{},
+		name:        name,
+		safeName:    safeName,
+		displayName: displayName,
+		version:     version,
+		url:         url,
+		builds:      []*Build{},
 		history: JobHistory{
 			Data: make(map[string]TestHistory),
 		},
@@ -125,12 +136,13 @@ type JobHistory struct {
 
 // Job represent a Prow job
 type Job struct {
-	name     string
-	safeName string
-	version  string
-	url      string
-	builds   []*Build
-	history  JobHistory
+	name        string
+	safeName    string
+	displayName string
+	version     string
+	url         string
+	builds      []*Build
+	history     JobHistory
 }
 
 func (j *Job) Name() string {
@@ -139,6 +151,10 @@ func (j *Job) Name() string {
 
 func (j *Job) SafeName() string {
 	return j.safeName
+}
+
+func (j *Job) DisplayName() string {
+	return j.displayName
 }
 
 func (j *Job) FetchAllBuildIds() (buildIds []string, err error) {
