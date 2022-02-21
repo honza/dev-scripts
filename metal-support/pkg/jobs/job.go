@@ -95,7 +95,13 @@ func makeJobs(version string, jobsTemplate []string) (jobs []*Job, err error) {
 
 func getDisplayName(name string) string {
 	prefix := "e2e-metal-ipi-"
-	displayName := name[strings.Index(name, prefix)+len(prefix):]
+
+	idx := strings.Index(name, prefix)
+	if idx < 0 {
+		return "ipv4"
+	}
+
+	displayName := name[idx+len(prefix):]
 	displayName = strings.ReplaceAll(displayName, "-", " ")
 
 	if displayName == "" {
@@ -113,7 +119,7 @@ func getDisplayName(name string) string {
 func NewJob(name, version string) *Job {
 
 	safeName := name[strings.Index(name, "e2e"):]
-	displayName := getDisplayName(safeName)
+	displayName := getDisplayName(name)
 	url := fmt.Sprintf("%s/%s/", baseArtifactsUrl, name)
 
 	return &Job{
