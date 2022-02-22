@@ -191,6 +191,8 @@ func (mw *MetalWallCommand) refreshData() {
 		}
 	}
 	mw.LastUpdated = time.Now().UTC()
+
+	mw.serialize()
 }
 
 func (mw *MetalWallCommand) fetchJobs(getJobs func(version string) ([]*jobs.Job, error), jobType string) error {
@@ -276,6 +278,10 @@ func (mw *MetalWallCommand) GobEncode() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	err = encoder.Encode(mw.LastUpdated)
+	if err != nil {
+		return nil, err
+	}
 	return buf.Bytes(), nil
 }
 
@@ -289,10 +295,15 @@ func (mw *MetalWallCommand) GobDecode(buf []byte) error {
 	if err != nil {
 		return err
 	}
+	err = decoder.Decode(&mw.LastUpdated)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
 func (mw *MetalWallCommand) serialize() error {
+
 	buffer := new(bytes.Buffer)
 	err := gob.NewEncoder(buffer).Encode(mw)
 	if err != nil {
