@@ -44,6 +44,7 @@ type BuildInfo struct {
 	Url                string `json:"url"`
 	Type               string `json:"type"`
 	Finished           string `json:"finished"`
+	FailureReason      string `json:"failure_reason"`
 }
 
 type Version struct {
@@ -185,6 +186,15 @@ func (mw *MetalWallCommand) refreshData() {
 					info.Passed = latest.Passed()
 					info.Url = latest.Url()
 					info.Finished = latest.Finished().String()
+					info.FailureReason = ""
+
+					// If current build failed, try to detect the reason
+					if !info.Passed {
+						info.FailureReason, err = latest.GetFailureReason()
+						if err != nil {
+							log.Printf("Unable to detect failure reason for build %s. Error: %s\n", latest.Id(), err)
+						}
+					}
 				}
 				mw.BuildsInfo[v][i] = info
 			}
@@ -224,7 +234,7 @@ func (mw *MetalWallCommand) fetchJobs(getJobs func(version string) ([]*jobs.Job,
 				mw.builds[b.Id()] = b
 				log.Printf("    %-110s%s\n", j.Name(), b.Id())
 
-				infos = append(infos, BuildInfo{
+				info := BuildInfo{
 					Version:  v,
 					JobName:  j.DisplayName(),
 					BuildId:  b.Id(),
@@ -232,7 +242,17 @@ func (mw *MetalWallCommand) fetchJobs(getJobs func(version string) ([]*jobs.Job,
 					Passed:   b.Passed(),
 					Type:     jobType,
 					Finished: b.Finished().String(),
-				})
+				}
+
+				if !info.Passed {
+					info.FailureReason, err = b.GetFailureReason()
+					if err != nil {
+						log.Printf("Unable to detect failure reason for build %s. Error: %s\n", b.Id(), err)
+					}
+				}
+
+				infos = append(infos, info)
+
 				break
 			}
 		}

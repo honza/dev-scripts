@@ -60,6 +60,18 @@ func (b *Build) Job() *Job {
 	return b.job
 }
 
+func (b *Build) getStepStatus(stepUrl string) (Finished, error) {
+
+	var f Finished
+	finished, err := FetchRemoteFile(fmt.Sprintf("%s/%s/finished.json", b.artifactsUrl, stepUrl))
+	if err != nil {
+		return f, err
+	}
+
+	err = json.Unmarshal(finished, &f)
+	return f, err
+}
+
 func (b *Build) LoadCurrentStatus() error {
 
 	started, err := FetchRemoteFile(fmt.Sprintf("%s/started.json", b.buildUrl))
@@ -83,6 +95,36 @@ func (b *Build) LoadCurrentStatus() error {
 		b.finished = &f
 	}
 	return nil
+}
+
+// Try to determine what caused the failure of the current build
+func (b *Build) GetFailureReason() (string, error) {
+
+	// There could be three main reasons for a build failure:
+	// - Packet setup didn't succeed
+	// - Dev-scripts setup wasn't able to correctly deploy a cluster
+	// - E2e test failure
+
+	// In a normal scenario, the most frequent cause of failure it's an e2e
+	// test failure, so let's start from it
+	e2eTestStep, err := b.getStepStatus("baremetalds-e2e-test")
+	if err == nil && !e2eTestStep.Passed {
+		return "e2e-test", nil
+	}
+
+	// Then check if dev-scripts failed
+	dsStep, err := b.getStepStatus("baremetalds-devscripts-setup")
+	if err == nil && !dsStep.Passed {
+		return "devscripts-setup", nil
+	}
+
+	// Finally, let's check the baremetal instance
+	packetSetupStep, err := b.getStepStatus("baremetalds-packet-setup")
+	if err == nil && !packetSetupStep.Passed {
+		return "packet-setup", nil
+	}
+
+	return "unknown", nil
 }
 
 // LoadTestResults fetches the test results related to the current build
