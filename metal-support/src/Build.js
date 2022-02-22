@@ -23,7 +23,7 @@ const Build = ({ build }) => {
       >
         <a href={build.url} target="_blank" rel="noreferrer">
           {build.new_build_in_progress ? (
-            <FaSpinner className="inline mr-2" />
+            <FaSpinner className="inline mr-2 animate-spin" />
           ) : (
             []
           )}
