@@ -8,6 +8,16 @@ import Tooltips from "@material-tailwind/react/Tooltips";
 import TooltipsContent from "@material-tailwind/react/TooltipsContent";
 import TimeAgo from "react-timeago";
 
+// HACK:
+//
+// tailwindcss scans your source files for class names, and if it finds its
+// classes, it emits them in the final css bundle.  Since we're building the
+// class names dynamically, the regex scanner doesn't recognize them.  Here, we
+// create a list of classes we will produce with the `bg` function.
+//
+// eslint-disable-next-line
+let css = ["bg-green-400", "bg-red-400", "bg-green-100", "bg-red-100"];
+
 let bg = (build) => (build.new_build_in_progress ? "100" : "400");
 
 let buildResultClassNames = (build) =>
