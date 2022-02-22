@@ -50,7 +50,7 @@ const Build = ({ build }) => {
       <div
         key={build.build_id}
         ref={ref}
-        className={`p-1 px-3 border-2 rounded-lg relative ${buildResultClassNames(
+        className={`p-1 px-3 border-2 rounded-lg w-72 relative ${buildResultClassNames(
           build
         )}`}
       >
