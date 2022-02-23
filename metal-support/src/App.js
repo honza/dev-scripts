@@ -3,11 +3,12 @@ import { GiGuitar, GiBearFace } from "react-icons/gi";
 import axios from "axios";
 
 import Versions from "./Versions";
+import ColorToggle from "./ColorToggle";
 
 class Loader extends Component {
   render() {
     return (
-      <div className="inline-flex items-center place-self-end text-slate-600">
+      <div className="inline-flex items-center text-slate-600">
         <svg className="animate-spin h-5 w-5 mr-3" viewBox="0 0 24 24">
           <circle
             className="opacity-25"
@@ -54,8 +55,8 @@ export default class App extends Component {
 
   render() {
     return (
-      <div className="bg-slate-100 font-mono">
-        <div className="bg-white mb-1 h-10 grid grid-cols-2 place-content-between h-12">
+      <div className="bg-slate-100 dark:bg-slate-600 font-mono">
+        <div className="bg-white dark:bg-slate-800 mb-1 h-10 h-12 text-slate-800 dark:text-slate-100 flex justify-between">
           <div className="">
             <h1 className="text-lg p-3">
               <GiBearFace className="inline" />
@@ -64,6 +65,7 @@ export default class App extends Component {
             </h1>
           </div>
           {this.state.updating ? <Loader /> : []}
+          <ColorToggle />
         </div>
 
         <Versions loaded={this.state.loaded} versions={this.state.versions} />
