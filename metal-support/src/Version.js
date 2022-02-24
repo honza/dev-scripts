@@ -11,8 +11,8 @@ class Version extends Component {
     let blocking = version.builds.filter((build) => build.type === "blocking");
     let upgrade = version.builds.filter((build) => build.type === "upgrade");
     return (
-      <div className="p-8 bg-white rounded-lg shadow-lg font-mono">
-        <h1 className="text-center font-bold text-4xl text-slate-600 mb-5">
+      <div className="p-8 bg-white dark:bg-slate-800 rounded-lg shadow-lg font-mono">
+        <h1 className="text-center font-bold text-4xl text-slate-600 dark:text-slate-200 mb-5">
           {version.name}
         </h1>
 

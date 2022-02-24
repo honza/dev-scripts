@@ -22,8 +22,12 @@ let bg = (build) => (build.new_build_in_progress ? "100" : "400");
 
 let buildResultClassNames = (build) =>
   build.passed
-    ? `bg-green-${bg(build)} hover:bg-green-300 border-green-600`
-    : `bg-red-${bg(build)} hover:bg-red-300 border-red-600`;
+    ? `bg-green-${bg(
+        build
+      )} dark:bg-green-800 hover:bg-green-300 dark:hover:bg-green-600 border-green-600`
+    : `bg-red-${bg(
+        build
+      )} dark:bg-red-800 hover:bg-red-300 dark:hover:bg-red-600 border-red-600`;
 
 let iconClasses = "inline mr-2 mt-1 absolute right-0";
 

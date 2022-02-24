@@ -3,12 +3,16 @@ import ReactDOM from "react-dom";
 import "./index.css";
 import "@material-tailwind/react/tailwind.css";
 
+import { ThemeProvider } from "./ThemeContext";
 import App from "./App";
+
 import reportWebVitals from "./reportWebVitals";
 
 ReactDOM.render(
   <React.StrictMode>
-    <App />
+    <ThemeProvider>
+      <App />
+    </ThemeProvider>
   </React.StrictMode>,
   document.getElementById("root")
 );
