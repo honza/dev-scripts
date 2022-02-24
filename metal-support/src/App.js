@@ -55,7 +55,7 @@ export default class App extends Component {
 
   render() {
     return (
-      <div className="bg-slate-100 dark:bg-slate-600 font-mono">
+      <div className="bg-slate-100 dark:bg-slate-600 font-mono min-h-screen">
         <div className="bg-white dark:bg-slate-800 mb-1 h-10 h-12 text-slate-800 dark:text-slate-100 flex justify-between">
           <div className="">
             <h1 className="text-lg p-3">
